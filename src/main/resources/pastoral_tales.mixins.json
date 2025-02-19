@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_8",
   "refmap": "pastoral_tales.refmap.json",
   "mixins": [
+    "FarmBlockMixin"
   ],
   "client": [
   ],
