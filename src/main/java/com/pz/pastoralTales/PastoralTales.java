@@ -1,6 +1,7 @@
 package com.pz.pastoralTales;
 
 import com.mojang.logging.LogUtils;
+import com.pz.pastoralTales.config.FarmlandPropertiesConfig;
 import com.pz.pastoralTales.registry.ModBlockEntity;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -17,13 +18,15 @@ public class PastoralTales {
     // Directly reference a slf4j logger
     public static final Logger LOGGER = LogUtils.getLogger();
 
+    private static final FarmlandPropertiesConfig farConfig = new FarmlandPropertiesConfig();
+
     public PastoralTales(IEventBus modEventBus, ModContainer modContainer) {
 
         init(modEventBus,
                 ModBlockEntity.BLOCK_ENTITY_TYPES
         );
-
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        farConfig.load();
     }
 
     private static void init(IEventBus modEventBus,DeferredRegister<?>... deferredRegisters) {
