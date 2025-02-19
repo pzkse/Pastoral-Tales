@@ -1,7 +1,6 @@
 package com.pz.pastoralTales;
 
 import com.mojang.logging.LogUtils;
-import com.pz.pastoralTales.farmland.config.FarmlandConfig;
 import com.pz.pastoralTales.registry.ModBlockEntity;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -23,7 +22,7 @@ public class PastoralTales {
         init(modEventBus,
                 ModBlockEntity.BLOCK_ENTITY_TYPES
         );
-        FarmlandConfig.loadConfig(MODID);
+
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
     }
 
