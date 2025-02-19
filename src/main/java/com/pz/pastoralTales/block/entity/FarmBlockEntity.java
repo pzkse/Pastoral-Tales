@@ -9,10 +9,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.NoiseRouter;
 import net.minecraft.world.level.levelgen.RandomState;
@@ -22,7 +20,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class FarmBlockEntity extends BlockEntity {
-
     public FarmBlockEntity( BlockPos pos, BlockState blockState) {
         super(ModBlockEntity.FARM_BLOCK_ENTITY.get(), pos, blockState);
     }
@@ -45,11 +42,11 @@ public class FarmBlockEntity extends BlockEntity {
 
     }
 
+    @Override
+    public void onLoad() {
+        super.onLoad();
 
-
-
-
-
+    }
 
     // 获取生物群系参数
     private Map<String, Double> getBiomeParameters() {
