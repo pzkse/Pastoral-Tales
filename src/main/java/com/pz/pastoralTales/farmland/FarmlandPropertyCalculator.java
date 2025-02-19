@@ -79,14 +79,144 @@ public class FarmlandPropertyCalculator {
     }
 
     private double evaluateExpression(String expression, double x) {
-        try (Context context = Context.create("js")) {
-            // 替换表达式中的x为具体值
-            String expr = expression.replace("x", String.valueOf(x));
-            Value result = context.eval("js", expr);
-            return result.asDouble();
+        try {
+            // 移除所有空格
+            expression = expression.replaceAll("\\s+", "");
+
+            // 替换x为实际值
+            expression = expression.replace("x", String.valueOf(x));
+
+            // 计算乘法和除法
+            while (expression.contains("*") || expression.contains("/")) {
+                expression = calculateMultiplyDivide(expression);
+            }
+
+            // 计算加法和减法
+            while (expression.contains("+") || expression.contains("-")) {
+                expression = calculateAddSubtract(expression);
+            }
+
+            return Double.parseDouble(expression);
         } catch (Exception e) {
-            LOGGER.error("Failed to evaluate expression: {} with x={}", expression, x, e);
+            LOGGER.error("Error evaluating expression '{}': {}", expression, e.getMessage());
             return 1.0;
         }
     }
+
+    private String calculateMultiplyDivide(String expression) {
+        // 查找乘除法表达式
+        int opIndex = -1;
+        char operator = ' ';
+
+        // 先找乘号
+        opIndex = expression.indexOf("*");
+        if (opIndex != -1) {
+            operator = '*';
+        }
+        // 如果没有乘号，找除号
+        if (opIndex == -1) {
+            opIndex = expression.indexOf("/");
+            if (opIndex != -1) {
+                operator = '/';
+            }
+        }
+
+        if (opIndex == -1) {
+            return expression;
+        }
+
+        // 获取操作数
+        String leftPart = getLeftOperand(expression, opIndex);
+        String rightPart = getRightOperand(expression, opIndex);
+
+        // 计算结果
+        double left = Double.parseDouble(leftPart);
+        double right = Double.parseDouble(rightPart);
+        double result;
+
+        if (operator == '*') {
+            result = left * right;
+        } else {
+            result = left / right;
+        }
+
+        // 替换原表达式中的这部分为结果
+        return expression.substring(0, opIndex - leftPart.length()) +
+                result +
+                expression.substring(opIndex + rightPart.length() + 1);
+    }
+
+    private String calculateAddSubtract(String expression) {
+        // 查找加减法表达式
+        int opIndex = -1;
+        char operator = ' ';
+
+        // 先找加号
+        opIndex = expression.indexOf("+");
+        if (opIndex != -1) {
+            operator = '+';
+        }
+        // 如果没有加号，找减号（跳过第一个字符，避免负数）
+        if (opIndex == -1) {
+            opIndex = expression.indexOf("-", 1);
+            if (opIndex != -1) {
+                operator = '-';
+            }
+        }
+
+        if (opIndex == -1) {
+            return expression;
+        }
+
+        // 获取操作数
+        String leftPart = getLeftOperand(expression, opIndex);
+        String rightPart = getRightOperand(expression, opIndex);
+
+        // 计算结果
+        double left = Double.parseDouble(leftPart);
+        double right = Double.parseDouble(rightPart);
+        double result;
+
+        if (operator == '+') {
+            result = left + right;
+        } else {
+            result = left - right;
+        }
+
+        // 替换原表达式中的这部分为结果
+        return expression.substring(0, opIndex - leftPart.length()) +
+                result +
+                expression.substring(opIndex + rightPart.length() + 1);
+    }
+
+    private String getLeftOperand(String expression, int opIndex) {
+        StringBuilder left = new StringBuilder();
+        int i = opIndex - 1;
+
+        // 向左读取数字和小数点
+        while (i >= 0 && (Character.isDigit(expression.charAt(i)) ||
+                expression.charAt(i) == '.' ||
+                (i == 0 && expression.charAt(i) == '-'))) {
+            left.insert(0, expression.charAt(i));
+            i--;
+        }
+
+        return left.toString();
+    }
+
+    private String getRightOperand(String expression, int opIndex) {
+        StringBuilder right = new StringBuilder();
+        int i = opIndex + 1;
+
+        // 向右读取数字和小数点
+        while (i < expression.length() && (Character.isDigit(expression.charAt(i)) ||
+                expression.charAt(i) == '.' ||
+                (i == opIndex + 1 && expression.charAt(i) == '-'))) {
+            right.append(expression.charAt(i));
+            i++;
+        }
+
+        return right.toString();
+    }
+
 }

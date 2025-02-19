@@ -5,12 +5,9 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.logging.LogUtils;
-import com.pz.pastoralTales.PastoralTales;
-import org.apache.logging.log4j.LogManager;
 import org.slf4j.Logger;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -155,5 +152,10 @@ public class FarmlandConfig {
 
     public static void reload(String modId) {
         loadConfig(modId);
+    }
+
+    // 获取所有属性配置
+    public static JsonObject getProperties() {
+        return properties;
     }
 }

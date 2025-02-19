@@ -1,11 +1,17 @@
 package com.pz.pastoralTales.block.entity;
 
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.pz.pastoralTales.farmland.BiomeParameters;
 import com.pz.pastoralTales.farmland.FarmlandProperty;
+import com.pz.pastoralTales.farmland.FarmlandPropertyCalculator;
+import com.pz.pastoralTales.farmland.config.FarmlandConfig;
 import com.pz.pastoralTales.registry.ModBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -15,19 +21,42 @@ import java.util.*;
 
 public class FarmBlockEntity extends BlockEntity {
     private static final Map<String, FarmlandProperty> properties = new HashMap<>();
+
     public FarmBlockEntity( BlockPos pos, BlockState blockState) {
         super(ModBlockEntity.FARM_BLOCK_ENTITY.get(), pos, blockState);
-        initializeProperties();
     }
 
     /**
      * 初始化耕地属性
      */
     private void initializeProperties() {
-        properties.put("fertility", new FarmlandProperty("fertility", 1.0));
-        properties.put("moisture", new FarmlandProperty("moisture", 1.0));
-        properties.put("mineral_content", new FarmlandProperty("mineral_content", 1.0));
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        // 获取生物群系参数
+        BiomeParameters biomeParams = BiomeParameters.fromLevel(serverLevel, worldPosition);
+
+        // 创建属性计算器
+        FarmlandPropertyCalculator calculator = new FarmlandPropertyCalculator(FarmlandConfig.getProperties());
+
+        // 从配置获取所有属性定义并计算初始值
+        if (FarmlandConfig.getProperties() != null &&
+                FarmlandConfig.getProperties().has("properties")) {
+
+            FarmlandConfig.getProperties()
+                    .getAsJsonObject("properties")
+                    .keySet()
+                    .forEach(propertyName -> {
+                        // 计算基于生物群系的初始值
+                        double calculatedValue = calculator.calculateProperty(propertyName, biomeParams);
+                        // 创建属性实例，使用计算后的值作为初始值
+                        properties.put(propertyName, new FarmlandProperty(propertyName, calculatedValue));
+                    });
+        }
     }
+
+
 
     /**
      * 获取指定属性值
@@ -63,8 +92,15 @@ public class FarmBlockEntity extends BlockEntity {
      * 每tick更新属性
      */
     public static <T extends BlockEntity> void tick(Level level, BlockPos pos, BlockState state1, T blockEntity) {
-        if (level != null && !level.isClientSide()) {
+        if (!level.isClientSide() && blockEntity instanceof FarmBlockEntity farmland) {
+            // 如果属性为空，初始化属性
+            if (properties.isEmpty()) {
+                farmland.initializeProperties();
+            }
+
+            // 处理自然恢复
             properties.values().forEach(FarmlandProperty::tick);
+            farmland.setChanged();
         }
     }
 
@@ -118,5 +154,10 @@ public class FarmBlockEntity extends BlockEntity {
      */
     public boolean hasProperty(String propertyName) {
         return properties.containsKey(propertyName);
+    }
+
+    // 获取指定属性
+    public FarmlandProperty getProperty(String name) {
+        return properties.get(name);
     }
 }
