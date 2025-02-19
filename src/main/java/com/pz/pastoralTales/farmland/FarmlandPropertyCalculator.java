@@ -23,15 +23,30 @@ public class FarmlandPropertyCalculator {
         JsonObject modifiers = property.getAsJsonObject("modifiers");
 
         // 计算每个影响因素的修改值
-        if (modifiers.has("temperature")) {
-            finalValue *= calculateModifier(modifiers.getAsJsonObject("temperature"),
+        if (modifiers.has("T")) {  // 温度
+            finalValue *= calculateModifier(modifiers.getAsJsonObject("T"),
                     params.temperature());
         }
-        if (modifiers.has("humidity")) {
-            finalValue *= calculateModifier(modifiers.getAsJsonObject("humidity"),
+        if (modifiers.has("V")) {  // 植被/湿度
+            finalValue *= calculateModifier(modifiers.getAsJsonObject("V"),
                     params.humidity());
         }
-        // ... 其他参数的计算
+        if (modifiers.has("C")) {  // 大陆度
+            finalValue *= calculateModifier(modifiers.getAsJsonObject("C"),
+                    params.continentality());
+        }
+        if (modifiers.has("E")) {  // 侵蚀度
+            finalValue *= calculateModifier(modifiers.getAsJsonObject("E"),
+                    params.erosion());
+        }
+        if (modifiers.has("D")) {  // 深度
+            finalValue *= calculateModifier(modifiers.getAsJsonObject("D"),
+                    params.depth());
+        }
+        if (modifiers.has("W")) {  // 奇异度
+            finalValue *= calculateModifier(modifiers.getAsJsonObject("W"),
+                    params.weirdness());
+        }
 
         // 确保最终值在0-1之间
         return Math.max(0.0, Math.min(1.0, finalValue));
