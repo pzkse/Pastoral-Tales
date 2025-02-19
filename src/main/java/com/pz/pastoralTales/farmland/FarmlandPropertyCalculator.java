@@ -1,11 +1,9 @@
 package com.pz.pastoralTales.farmland;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import org.graalvm.polyglot.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.graalvm.polyglot.Context;
 
 public class FarmlandPropertyCalculator {
     private final JsonObject propertyConfig;
@@ -64,21 +62,25 @@ public class FarmlandPropertyCalculator {
 
         double min = ranges.get("min").getAsDouble();
         double max = ranges.get("max").getAsDouble();
+        // 获取修改器值
+        JsonElement modifierElement = ranges.get("modifier");
         double modifierValue;
 
-        if (ranges.get("modifier").isJsonPrimitive()) {
-            modifierValue = ranges.get("modifier").getAsDouble();
+        if (modifierElement.isJsonPrimitive() && !modifierElement.getAsString().contains("x")) {
+            // 如果是简单数值
+            modifierValue = modifierElement.getAsDouble();
         } else {
-            // 处理表达式类型的modifier
-            String expression = ranges.get("modifier").getAsString();
-            modifierValue = evaluateExpression(expression, paramValue);
+            // 如果是表达式
+            String expression = modifierElement.getAsString();
+            modifierValue = calculateExpressionValue(expression, paramValue);
         }
 
-        // 根据权重计算最终修改值
+        // 限制参数值在范围内
+        paramValue = Math.max(min, Math.min(max, paramValue));
+
         return 1.0 + (modifierValue - 1.0) * influenceWeight;
     }
-
-    private double evaluateExpression(String expression, double x) {
+    private double calculateExpressionValue(String expression, double x) {
         try {
             // 移除所有空格
             expression = expression.replaceAll("\\s+", "");
@@ -86,137 +88,75 @@ public class FarmlandPropertyCalculator {
             // 替换x为实际值
             expression = expression.replace("x", String.valueOf(x));
 
-            // 计算乘法和除法
-            while (expression.contains("*") || expression.contains("/")) {
-                expression = calculateMultiplyDivide(expression);
+            // 替换数学函数
+            if (expression.contains("Math.abs")) {
+                expression = expression.replace("Math.abs(", "abs(");
             }
 
-            // 计算加法和减法
-            while (expression.contains("+") || expression.contains("-")) {
-                expression = calculateAddSubtract(expression);
-            }
-
-            return Double.parseDouble(expression);
+            // 使用简单的表达式计算
+            return evaluateSimpleExpression(expression);
         } catch (Exception e) {
-            LOGGER.error("Error evaluating expression '{}': {}", expression, e.getMessage());
+            LOGGER.error("Failed to evaluate expression: {} with x={}", expression, x, e);
             return 1.0;
         }
     }
 
-    private String calculateMultiplyDivide(String expression) {
-        // 查找乘除法表达式
-        int opIndex = -1;
-        char operator = ' ';
 
-        // 先找乘号
-        opIndex = expression.indexOf("*");
-        if (opIndex != -1) {
-            operator = '*';
-        }
-        // 如果没有乘号，找除号
-        if (opIndex == -1) {
-            opIndex = expression.indexOf("/");
-            if (opIndex != -1) {
-                operator = '/';
-            }
+    private double evaluateSimpleExpression(String expression) {
+        // 移除括号，同时保留括号内的内容
+        while (expression.contains("(")) {
+            int openIndex = expression.lastIndexOf("(");
+            int closeIndex = expression.indexOf(")", openIndex);
+            if (closeIndex == -1) throw new IllegalArgumentException("Mismatched parentheses");
+
+            String subExpr = expression.substring(openIndex + 1, closeIndex);
+            double subResult = evaluateSimpleExpression(subExpr);
+
+            expression = expression.substring(0, openIndex) +
+                    subResult +
+                    expression.substring(closeIndex + 1);
         }
 
-        if (opIndex == -1) {
-            return expression;
+        // 处理abs函数
+        if (expression.startsWith("abs")) {
+            String argument = expression.substring(3);
+            return Math.abs(evaluateSimpleExpression(argument));
         }
 
-        // 获取操作数
-        String leftPart = getLeftOperand(expression, opIndex);
-        String rightPart = getRightOperand(expression, opIndex);
-
-        // 计算结果
-        double left = Double.parseDouble(leftPart);
-        double right = Double.parseDouble(rightPart);
+        // 分割表达式
+        String[] parts;
         double result;
 
-        if (operator == '*') {
-            result = left * right;
-        } else {
-            result = left / right;
-        }
-
-        // 替换原表达式中的这部分为结果
-        return expression.substring(0, opIndex - leftPart.length()) +
-                result +
-                expression.substring(opIndex + rightPart.length() + 1);
-    }
-
-    private String calculateAddSubtract(String expression) {
-        // 查找加减法表达式
-        int opIndex = -1;
-        char operator = ' ';
-
-        // 先找加号
-        opIndex = expression.indexOf("+");
-        if (opIndex != -1) {
-            operator = '+';
-        }
-        // 如果没有加号，找减号（跳过第一个字符，避免负数）
-        if (opIndex == -1) {
-            opIndex = expression.indexOf("-", 1);
-            if (opIndex != -1) {
-                operator = '-';
+        if (expression.contains("+")) {
+            parts = expression.split("\\+");
+            result = evaluateSimpleExpression(parts[0]);
+            for (int i = 1; i < parts.length; i++) {
+                result += evaluateSimpleExpression(parts[i]);
             }
-        }
-
-        if (opIndex == -1) {
-            return expression;
-        }
-
-        // 获取操作数
-        String leftPart = getLeftOperand(expression, opIndex);
-        String rightPart = getRightOperand(expression, opIndex);
-
-        // 计算结果
-        double left = Double.parseDouble(leftPart);
-        double right = Double.parseDouble(rightPart);
-        double result;
-
-        if (operator == '+') {
-            result = left + right;
+        } else if (expression.contains("-")) {
+            parts = expression.split("-");
+            result = evaluateSimpleExpression(parts[0]);
+            for (int i = 1; i < parts.length; i++) {
+                result -= evaluateSimpleExpression(parts[i]);
+            }
+        } else if (expression.contains("*")) {
+            parts = expression.split("\\*");
+            result = evaluateSimpleExpression(parts[0]);
+            for (int i = 1; i < parts.length; i++) {
+                result *= evaluateSimpleExpression(parts[i]);
+            }
+        } else if (expression.contains("/")) {
+            parts = expression.split("/");
+            result = evaluateSimpleExpression(parts[0]);
+            for (int i = 1; i < parts.length; i++) {
+                result /= evaluateSimpleExpression(parts[i]);
+            }
         } else {
-            result = left - right;
+            // 如果是纯数字
+            result = Double.parseDouble(expression);
         }
 
-        // 替换原表达式中的这部分为结果
-        return expression.substring(0, opIndex - leftPart.length()) +
-                result +
-                expression.substring(opIndex + rightPart.length() + 1);
-    }
-
-    private String getLeftOperand(String expression, int opIndex) {
-        StringBuilder left = new StringBuilder();
-        int i = opIndex - 1;
-
-        // 向左读取数字和小数点
-        while (i >= 0 && (Character.isDigit(expression.charAt(i)) ||
-                expression.charAt(i) == '.' ||
-                (i == 0 && expression.charAt(i) == '-'))) {
-            left.insert(0, expression.charAt(i));
-            i--;
-        }
-
-        return left.toString();
-    }
-
-    private String getRightOperand(String expression, int opIndex) {
-        StringBuilder right = new StringBuilder();
-        int i = opIndex + 1;
-
-        // 向右读取数字和小数点
-        while (i < expression.length() && (Character.isDigit(expression.charAt(i)) ||
-                expression.charAt(i) == '.' ||
-                (i == opIndex + 1 && expression.charAt(i) == '-'))) {
-            right.append(expression.charAt(i));
-            i++;
-        }
-
-        return right.toString();
+        return result;
     }
 
 }

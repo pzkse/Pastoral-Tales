@@ -1,8 +1,6 @@
 package com.pz.pastoralTales.block.entity;
 
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.pz.pastoralTales.farmland.BiomeParameters;
 import com.pz.pastoralTales.farmland.FarmlandProperty;
 import com.pz.pastoralTales.farmland.FarmlandPropertyCalculator;
@@ -14,13 +12,12 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.*;
 
 public class FarmBlockEntity extends BlockEntity {
-    private static final Map<String, FarmlandProperty> properties = new HashMap<>();
+    private final Map<String, FarmlandProperty> properties = new HashMap<>();
 
     public FarmBlockEntity( BlockPos pos, BlockState blockState) {
         super(ModBlockEntity.FARM_BLOCK_ENTITY.get(), pos, blockState);
@@ -43,7 +40,7 @@ public class FarmBlockEntity extends BlockEntity {
         // 从配置获取所有属性定义并计算初始值
         if (FarmlandConfig.getProperties() != null &&
                 FarmlandConfig.getProperties().has("properties")) {
-
+            properties.clear(); // 清除现有属性
             FarmlandConfig.getProperties()
                     .getAsJsonObject("properties")
                     .keySet()
@@ -94,12 +91,12 @@ public class FarmBlockEntity extends BlockEntity {
     public static <T extends BlockEntity> void tick(Level level, BlockPos pos, BlockState state1, T blockEntity) {
         if (!level.isClientSide() && blockEntity instanceof FarmBlockEntity farmland) {
             // 如果属性为空，初始化属性
-            if (properties.isEmpty()) {
+            if (farmland.properties.isEmpty()) {
                 farmland.initializeProperties();
             }
 
             // 处理自然恢复
-            properties.values().forEach(FarmlandProperty::tick);
+            farmland.properties.values().forEach(FarmlandProperty::tick);
             farmland.setChanged();
         }
     }
