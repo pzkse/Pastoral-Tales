@@ -32,7 +32,7 @@ public class FarmBlockMixin implements EntityBlock {
     @Override
     public @Nullable <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
                                                                             BlockEntityType<T> blockEntityType) {
-        return blockEntityType == ModBlockEntity.FARM_BLOCK_ENTITY.get() ?  (level1, pos, state1, blockEntity) ->FarmBlockEntity.tick(level1, pos, state1, blockEntity) : null;
+        return blockEntityType == ModBlockEntity.FARM_BLOCK_ENTITY.get() ? FarmBlockEntity::tick : null;
     }
 
 }

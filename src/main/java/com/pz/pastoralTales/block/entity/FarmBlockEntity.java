@@ -20,8 +20,6 @@ public class FarmBlockEntity extends BlockEntity {
         initializeProperties();
     }
 
-
-
     /**
      * 初始化耕地属性
      */

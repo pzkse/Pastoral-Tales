@@ -1,9 +1,15 @@
 package com.pz.pastoralTales.farmland;
 
 import com.google.gson.JsonObject;
+import org.graalvm.polyglot.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.graalvm.polyglot.Context;
 
 public class FarmlandPropertyCalculator {
     private final JsonObject propertyConfig;
+    private static final Logger LOGGER = LoggerFactory.getLogger(FarmlandPropertyCalculator.class);
 
     public FarmlandPropertyCalculator(JsonObject config) {
         this.propertyConfig = config;
@@ -73,8 +79,14 @@ public class FarmlandPropertyCalculator {
     }
 
     private double evaluateExpression(String expression, double x) {
-        // 这里需要实现表达式解析器
-        // 可以使用类似exp4j这样的库来处理数学表达式
-        return 1.0; // 临时返回值
+        try (Context context = Context.create("js")) {
+            // 替换表达式中的x为具体值
+            String expr = expression.replace("x", String.valueOf(x));
+            Value result = context.eval("js", expr);
+            return result.asDouble();
+        } catch (Exception e) {
+            LOGGER.error("Failed to evaluate expression: {} with x={}", expression, x, e);
+            return 1.0;
+        }
     }
 }

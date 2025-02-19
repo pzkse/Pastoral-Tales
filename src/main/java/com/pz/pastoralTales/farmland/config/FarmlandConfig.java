@@ -55,34 +55,92 @@ public class FarmlandConfig {
     private static JsonObject createDefaultProperties() {
         JsonObject config = new JsonObject();
         JsonObject properties = new JsonObject();
+        // 肥力属性配置
+        properties.add("fertility", createPropertyConfig(
+                1.0,  // base_value
+                0.001, // tick_recovery
+                0.05,  // recovery_amount
+                0.1,   // crop_consumption
+                new ModifierConfig[]{
+                        new ModifierConfig("T", 0.3, "0.8 + (x * 0.4)"),
+                        new ModifierConfig("V", 0.4, "0.6 + (x * 0.8)"),
+                        new ModifierConfig("E", 0.3, "1.2 - (x * 0.4)")
+                }
+        ));
 
-        // 肥力属性
-        JsonObject fertility = new JsonObject();
-        fertility.addProperty("base_value", 1.0);
-        fertility.addProperty("tick_recovery", 0.001); // 每tick恢复率
-        fertility.addProperty("recovery_amount", 0.05); // 每次恢复数值
-        fertility.addProperty("crop_consumption", 0.1); // 作物生长消耗
+        // 水分属性配置
+        properties.add("moisture", createPropertyConfig(
+                1.0,   // base_value
+                0.002, // tick_recovery
+                0.1,   // recovery_amount
+                0.15,  // crop_consumption
+                new ModifierConfig[]{
+                        new ModifierConfig("T", 0.4, "1.0 - (x * 0.6)"),
+                        new ModifierConfig("V", 0.4, "0.5 + (x * 1.0)"),
+                        new ModifierConfig("C", 0.2, "1.0 - (Math.abs(x) * 0.4)")
+                }
+        ));
 
-        // 水分属性
-        JsonObject moisture = new JsonObject();
-        moisture.addProperty("base_value", 1.0);
-        moisture.addProperty("tick_recovery", 0.002);
-        moisture.addProperty("recovery_amount", 0.1);
-        moisture.addProperty("crop_consumption", 0.15);
-
-        // 矿物质含量
-        JsonObject mineral = new JsonObject();
-        mineral.addProperty("base_value", 1.0);
-        mineral.addProperty("tick_recovery", 0.0005);
-        mineral.addProperty("recovery_amount", 0.03);
-        mineral.addProperty("crop_consumption", 0.08);
-
-        properties.add("fertility", fertility);
-        properties.add("moisture", moisture);
-        properties.add("mineral", mineral);
+        // 矿物质属性配置
+        properties.add("mineral", createPropertyConfig(
+                1.0,    // base_value
+                0.0005, // tick_recovery
+                0.03,   // recovery_amount
+                0.08,   // crop_consumption
+                new ModifierConfig[]{
+                        new ModifierConfig("E", 0.5, "0.7 + (x * 0.6)"),
+                        new ModifierConfig("D", 0.3, "0.8 + (x * 0.4)"),
+                        new ModifierConfig("W", 0.2, "1.0 + (Math.abs(x) * 0.2)")
+                }
+        ));
 
         config.add("properties", properties);
         return config;
+    }
+
+    private static JsonObject createPropertyConfig(
+            double baseValue,
+            double tickRecovery,
+            double recoveryAmount,
+            double cropConsumption,
+            ModifierConfig[] modifiers
+    ) {
+        JsonObject property = new JsonObject();
+        property.addProperty("base_value", baseValue);
+        property.addProperty("tick_recovery", tickRecovery);
+        property.addProperty("recovery_amount", recoveryAmount);
+        property.addProperty("crop_consumption", cropConsumption);
+
+        JsonObject modifiersObject = new JsonObject();
+        for (ModifierConfig modifier : modifiers) {
+            JsonObject modifierObject = new JsonObject();
+            modifierObject.addProperty("influence_weight", modifier.weight);
+
+            JsonObject rangeObject = new JsonObject();
+            rangeObject.addProperty("min", -1.0);
+            rangeObject.addProperty("max", 1.0);
+            rangeObject.addProperty("modifier", modifier.expression);
+
+            JsonObject ranges = new JsonObject();
+            modifierObject.add("ranges", GSON.toJsonTree(new JsonObject[]{rangeObject}));
+
+            modifiersObject.add(modifier.type, modifierObject);
+        }
+
+        property.add("modifiers", modifiersObject);
+        return property;
+    }
+
+    private static class ModifierConfig {
+        final String type;
+        final double weight;
+        final String expression;
+
+        ModifierConfig(String type, double weight, String expression) {
+            this.type = type;
+            this.weight = weight;
+            this.expression = expression;
+        }
     }
 
     public static JsonObject getPropertyConfig(String propertyName) {
